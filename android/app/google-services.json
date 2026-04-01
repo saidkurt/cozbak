@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "287520197456",
+    "project_id": "cozbak-e7a9a",
+    "storage_bucket": "cozbak-e7a9a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:287520197456:android:38d1fa50f21d70c5d3ba55",
+        "android_client_info": {
+          "package_name": "com.example.cozbak"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "287520197456-phcigvdshgin85al3iqeil75qhvqrlam.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7snatf5sKiBKC9TgEipKIU8keIRSE1fE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "287520197456-phcigvdshgin85al3iqeil75qhvqrlam.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "287520197456-dh1strd70l8215rut6ih0hb3b0pp8pen.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cozbak"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
