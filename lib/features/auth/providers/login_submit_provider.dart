@@ -38,6 +38,7 @@ class LoginSubmitNotifier extends AsyncNotifier<void> {
       final user = credential.user;
       if (user != null) {
         await firestoreService.createOrUpdateUser(user);
+        
       }
 
       state = const AsyncData(null);

@@ -1,1 +1,37 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"cozbak-e7a9a","appId":"1:287520197456:android:38d1fa50f21d70c5d3ba55","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"cozbak-e7a9a","configurations":{"android":"1:287520197456:android:38d1fa50f21d70c5d3ba55","ios":"1:287520197456:ios:e950c716f13d88eed3ba55"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cozbak-e7a9a",
+          "appId": "1:287520197456:android:38d1fa50f21d70c5d3ba55",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cozbak-e7a9a",
+          "configurations": {
+            "android": "1:287520197456:android:38d1fa50f21d70c5d3ba55",
+            "ios": "1:287520197456:ios:e950c716f13d88eed3ba55"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": []
+    }
+  ]
+}

@@ -49,6 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    
   }
 
   @override
@@ -78,16 +79,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
-            const SizedBox(height: 8),
-
-            // ÜST KISIM SABİT
-            const _OnboardingTopBar(),
-
-            const SizedBox(height: 8),
-
-            // SADECE ORTA ALAN SLIDER
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -151,6 +145,8 @@ class _OnboardingFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenHorizontal,

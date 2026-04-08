@@ -6,8 +6,10 @@ import 'package:cozbak/features/auth/screens/forgot_password_screen.dart';
 import 'package:cozbak/features/auth/screens/login_screen.dart';
 import 'package:cozbak/features/auth/screens/register_screen.dart';
 import 'package:cozbak/features/auth/screens/success_password_reset_screen.dart' hide ForgotPasswordScreen;
+import 'package:cozbak/features/history/screen/history_screen.dart';
 import 'package:cozbak/features/home/screen/home_screen.dart';
 import 'package:cozbak/features/onboarding/screen/onboarding_screen.dart';
+import 'package:cozbak/features/profile/screen/profile_screen.dart';
 import 'package:cozbak/features/splash/screen/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,6 +73,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.successResetPasswordSent,
         pageBuilder: (context, state) => const NoTransitionPage(
           child: SuccessPasswordResetScreen(),
+        ),
+      ),
+         GoRoute(
+        path: RouteNames.profile,
+        name: RouteNames.profile,
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ProfileScreen(),
+        ),
+      ),
+         GoRoute(
+        path: RouteNames.history,
+        name: RouteNames.history,
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: HistoryScreen(),
         ),
       ),
     ],

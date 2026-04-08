@@ -23,8 +23,7 @@ class AuthActionController {
       if (user != null) {
         await firestoreService.createOrUpdateUser(user);
       }
-
-      AppSnackbar.showSuccess('Google ile giriş başarılı.');
+      
     } on FirebaseAuthException catch (e) {
       AppSnackbar.showError(_mapFirebaseError(e));
     } catch (_) {

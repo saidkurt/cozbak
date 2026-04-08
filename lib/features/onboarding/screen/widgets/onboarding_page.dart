@@ -149,7 +149,7 @@ class _IllustrationArea extends StatelessWidget {
             duration: const Duration(milliseconds: 2200),
             child: Image.asset(
               imagePath,
-              width: 235,
+              width: 400,
               fit: BoxFit.contain,
             ),
           ),

@@ -10,4 +10,6 @@ class RouteNames {
   static const successResetPasswordSent = '/success-reset-password-sent';
 
   static const home = '/home';
+  static const history = '/history';
+  static const profile = '/profile';
 }
