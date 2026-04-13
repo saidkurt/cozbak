@@ -6,13 +6,22 @@ class AdHelper {
       return 'ca-app-pub-3940256099942544/6300978111';
     }
 
+    if (Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/2934735716';
+    }
+
     throw UnsupportedError('Desteklenmeyen platform');
   }
 
   static String get rewardedAdUnitId {
-  if (Platform.isAndroid) {
-    return 'ca-app-pub-8221922808926620/3000849883';
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3940256099942544/5224354917';
+    }
+
+    if (Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/1712485313';
+    }
+
+    throw UnsupportedError('Desteklenmeyen platform');
   }
-  throw UnsupportedError('Desteklenmeyen platform');
-}
 }

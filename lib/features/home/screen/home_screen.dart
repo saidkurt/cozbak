@@ -12,7 +12,6 @@ import 'package:cozbak/features/home/provider/recent_questions_provider.dart';
 import 'package:cozbak/features/home/widget/home_banner_ad.dart';
 import 'package:cozbak/features/home/widget/home_hero_card.dart';
 import 'package:cozbak/features/home/widget/recent_solutions_section.dart';
-import 'package:cozbak/shared/model/app_user.dart';
 import 'package:cozbak/shared/provider/current_user_provider.dart';
 
 import 'package:cozbak/shared/widgets/app_aura_background.dart';
@@ -189,8 +188,8 @@ class HomeScreen extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(AppRadii.full),

@@ -9,8 +9,10 @@ class ImagePickerService {
 
   Future<File?> pickFromCamera() async {
     final picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 92,
+       source: ImageSource.camera,
+  imageQuality: 70,
+  maxWidth: 1600,
+  maxHeight: 1600,
     );
 
     if (picked == null) return null;
@@ -19,8 +21,10 @@ class ImagePickerService {
 
   Future<File?> pickFromGallery() async {
     final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 92,
+       source: ImageSource.gallery,
+  imageQuality: 70,
+  maxWidth: 1600,
+  maxHeight: 1600,
     );
 
     if (picked == null) return null;
