@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:cozbak/app/router/route_names.dart';
+import 'package:cozbak/features/analysis/screen/analysis_loading_screen.dart';
+import 'package:cozbak/features/analysis/screen/analysis_preview_screen.dart';
+import 'package:cozbak/features/analysis/screen/analysis_result_screen.dart';
 import 'package:cozbak/features/auth/providers/auth_provider.dart';
 import 'package:cozbak/features/auth/screens/forgot_password_screen.dart';
 import 'package:cozbak/features/auth/screens/login_screen.dart';
 import 'package:cozbak/features/auth/screens/register_screen.dart';
-import 'package:cozbak/features/auth/screens/success_password_reset_screen.dart' hide ForgotPasswordScreen;
+import 'package:cozbak/features/auth/screens/success_password_reset_screen.dart';
 import 'package:cozbak/features/history/screen/history_screen.dart';
 import 'package:cozbak/features/home/screen/home_screen.dart';
 import 'package:cozbak/features/onboarding/screen/onboarding_screen.dart';
@@ -84,11 +87,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
          GoRoute(
         path: RouteNames.history,
-        name: RouteNames.history,
         pageBuilder: (context, state) => const NoTransitionPage(
           child: HistoryScreen(),
         ),
+        
       ),
+       GoRoute(
+  path: RouteNames.analysisLoading,
+  builder: (context, state) => const AnalysisLoadingScreen(),
+),
+GoRoute(
+  path: RouteNames.analysisPreview,
+  builder: (context, state) => const AnalysisPreviewScreen(),
+),
+GoRoute(
+  path: RouteNames.analysisResult,
+  builder: (context, state) => const AnalysisResultScreen(),
+),
     ],
     redirect: (context, state) {
   final authState = ref.read(authStateProvider);

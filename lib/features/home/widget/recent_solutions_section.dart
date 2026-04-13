@@ -11,10 +11,12 @@ class RecentSolutionsSection extends StatelessWidget {
     super.key,
     required this.recentAsync,
     required this.onViewAll,
+    required this.onQuestionTap,
   });
 
   final AsyncValue<List<RecentQuestionItem>> recentAsync;
   final VoidCallback onViewAll;
+   final ValueChanged<RecentQuestionItem> onQuestionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +46,12 @@ class RecentSolutionsSection extends StatelessWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
-                  final item = items[index];
-                  return _RecentSolutionCard(item: item);
-                },
+  final item = items[index];
+  return _RecentSolutionCard(
+    item: item,
+    onTap: () => onQuestionTap(item),
+  );
+},
               );
             },
             loading: () => ListView.separated(
@@ -66,100 +71,112 @@ class RecentSolutionsSection extends StatelessWidget {
 }
 
 class _RecentSolutionCard extends StatelessWidget {
-  const _RecentSolutionCard({required this.item});
+  const _RecentSolutionCard({
+    required this.item,
+    required this.onTap,
+  });
 
   final RecentQuestionItem item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final badge = _statusBadge(item.status);
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 84),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                ? Image.network(
-                    item.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.photo_rounded,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  )
-                : const Icon(
-                    Icons.photo_rounded,
-                    color: AppColors.onSurfaceVariant,
-                  ),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 84),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-  crossAxisAlignment: CrossAxisAlignment.start,
-  mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
+          child: Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                    ? Image.network(
+                        item.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.photo_rounded,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.photo_rounded,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Text(
-                        '${item.lesson} / ${item.category}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.labelMd.copyWith(
-                          color: AppColors.primary,
-                          fontSize: 10,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${item.lesson} / ${item.category}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badge.background,
+                            borderRadius:
+                                BorderRadius.circular(AppRadii.full),
+                          ),
+                          child: Text(
+                            badge.label,
+                            style: AppTextStyles.labelMd.copyWith(
+                              fontSize: 9,
+                              color: badge.foreground,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: badge.background,
-                        borderRadius: BorderRadius.circular(AppRadii.full),
-                      ),
-                      child: Text(
-                        badge.label,
-                        style: AppTextStyles.labelMd.copyWith(
-                          fontSize: 9,
-                          color: badge.foreground,
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.recognizedQuestion.isEmpty
+                          ? 'Çözüm hazırlanıyor...'
+                          : item.recognizedQuestion,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySm.copyWith(
+                        color: AppColors.onSurface,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  item.recognizedQuestion.isEmpty
-                      ? 'Çözüm hazırlanıyor...'
-                      : item.recognizedQuestion,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.onSurface,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

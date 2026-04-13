@@ -16,16 +16,38 @@ type QuestionStep = {
 type QuestionAnalysis = {
   lesson: string;
   category: string;
-  recognizedQuestion: string;
   generalMethod: string;
   steps: QuestionStep[];
   finalAnswer: string;
-  commonMistake: string;
-  tips: string;
-  similarQuestion: string;
 };
 
-type ExpectedAnswerType = "number" | "option" | "name" | "set" | "unknown";
+
+function setCors(res: any) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+async function getUidFromRequest(req: any): Promise<string> {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader || typeof authHeader !== "string") {
+    throw new Error("Authorization header eksik.");
+  }
+
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    throw new Error("Geçersiz Authorization formatı.");
+  }
+
+  const idToken = match[1];
+  const decoded = await admin.auth().verifyIdToken(idToken);
+
+  if (!decoded?.uid) {
+    throw new Error("Geçersiz kullanıcı kimliği.");
+  }
+
+  return decoded.uid;
+}
 
 function sanitizeAnalysis(data: any): QuestionAnalysis {
   const steps: QuestionStep[] = Array.isArray(data?.steps)
@@ -49,10 +71,6 @@ function sanitizeAnalysis(data: any): QuestionAnalysis {
   return {
     lesson: typeof data?.lesson === "string" ? data.lesson.trim() : "",
     category: typeof data?.category === "string" ? data.category.trim() : "",
-    recognizedQuestion:
-      typeof data?.recognizedQuestion === "string"
-        ? data.recognizedQuestion.trim()
-        : "",
     generalMethod:
       typeof data?.generalMethod === "string"
         ? data.generalMethod.trim().slice(0, 150)
@@ -60,71 +78,10 @@ function sanitizeAnalysis(data: any): QuestionAnalysis {
     steps,
     finalAnswer:
       typeof data?.finalAnswer === "string" ? data.finalAnswer.trim() : "",
-    commonMistake:
-      typeof data?.commonMistake === "string"
-        ? data.commonMistake.trim().slice(0, 120)
-        : "",
-    tips:
-      typeof data?.tips === "string" ? data.tips.trim().slice(0, 120) : "",
-    similarQuestion:
-      typeof data?.similarQuestion === "string"
-        ? data.similarQuestion.trim().slice(0, 120)
-        : "",
   };
 }
 
-function detectExpectedAnswerType(question: string): ExpectedAnswerType {
-  const q = question.toLowerCase();
 
-  if (
-    q.includes("kaçtır") ||
-    q.includes("kaç top") ||
-    q.includes("kaç kişi") ||
-    q.includes("kaç sayı") ||
-    q.includes("kaç mol") ||
-    q.includes("kaç gram") ||
-    q.includes("kaç kg") ||
-    q.includes("kaç metre") ||
-    q.includes("kaç cm") ||
-    q.includes("kaç m") ||
-    q.includes("kaç derece") ||
-    q.includes("kaç saat") ||
-    q.includes("kaç dakika") ||
-    q.includes("kaç saniye") ||
-    q.includes("toplam kaç") ||
-    q.includes("en az kaç") ||
-    q.includes("en çok kaç") ||
-    q.includes("kaç olur") ||
-    q.includes("sonuç kaç")
-  ) {
-    return "number";
-  }
-
-  if (
-    q.includes("hangisidir") ||
-    q.includes("hangi seçen") ||
-    q.includes("doğru seçenek") ||
-    q.includes("yanlış seçenek")
-  ) {
-    return "option";
-  }
-
-  if (q.includes("hangileri")) {
-    return "set";
-  }
-
-  if (
-    q.includes("hangi madde") ||
-    q.includes("hangi bileşik") ||
-    q.includes("hangi element") ||
-    q.includes("hangi gezegen") ||
-    q.includes("hangi yapı")
-  ) {
-    return "name";
-  }
-
-  return "unknown";
-}
 
 function looksLikeIntermediateAnswer(answer: string): boolean {
   const a = answer.trim().toLowerCase();
@@ -156,32 +113,7 @@ function looksLikeIntermediateAnswer(answer: string): boolean {
   );
 }
 
-function isPureNumberAnswer(answer: string): boolean {
-  const a = answer.trim();
-  return /^-?\d+([.,]\d+)?(\/\d+)?$/.test(a);
-}
 
-function matchesExpectedAnswerType(question: string, answer: string): boolean {
-  const expected = detectExpectedAnswerType(question);
-  const a = answer.trim();
-
-  switch (expected) {
-    case "number":
-      return isPureNumberAnswer(a);
-
-    case "option":
-      return /^[abcde]\)?$/i.test(a) || /^[1-5]\)?$/.test(a) || a.length <= 20;
-
-    case "name":
-      return a.length > 0 && !looksLikeIntermediateAnswer(a);
-
-    case "set":
-      return a.length > 0;
-
-    default:
-      return a.length > 0;
-  }
-}
 
 function extractNumericCandidate(text: string): string | null {
   const cleaned = text.trim();
@@ -196,18 +128,12 @@ function extractNumericCandidate(text: string): string | null {
 }
 
 function normalizeFinalAnswer(analysis: QuestionAnalysis): QuestionAnalysis {
-  const question = analysis.recognizedQuestion?.trim() ?? "";
   const finalAnswer = analysis.finalAnswer?.trim() ?? "";
 
-  const currentAnswer =
-    detectExpectedAnswerType(question) === "number"
-      ? extractNumericCandidate(finalAnswer) ?? finalAnswer
-      : finalAnswer;
-
-  const isCurrentValid =
-    currentAnswer.length > 0 &&
-    !looksLikeIntermediateAnswer(currentAnswer) &&
-    matchesExpectedAnswerType(question, currentAnswer);
+const currentAnswer = extractNumericCandidate(finalAnswer) ?? finalAnswer;
+const isCurrentValid =
+  currentAnswer.length > 0 &&
+  !looksLikeIntermediateAnswer(currentAnswer);
 
   if (isCurrentValid) {
     analysis.finalAnswer = currentAnswer;
@@ -218,14 +144,10 @@ function normalizeFinalAnswer(analysis: QuestionAnalysis): QuestionAnalysis {
     const rawCandidate = analysis.steps[i]?.result?.trim() ?? "";
     if (!rawCandidate) continue;
 
-    const candidate =
-      detectExpectedAnswerType(question) === "number"
-        ? extractNumericCandidate(rawCandidate) ?? rawCandidate
-        : rawCandidate;
+    const candidate = extractNumericCandidate(rawCandidate) ?? rawCandidate;
 
     if (!candidate) continue;
     if (looksLikeIntermediateAnswer(candidate)) continue;
-    if (!matchesExpectedAnswerType(question, candidate)) continue;
 
     analysis.finalAnswer = candidate;
     return analysis;
@@ -237,7 +159,6 @@ function normalizeFinalAnswer(analysis: QuestionAnalysis): QuestionAnalysis {
 function isValidAnalysis(analysis: QuestionAnalysis): boolean {
   return (
     analysis.lesson.length > 0 &&
-    analysis.recognizedQuestion.length > 5 &&
     analysis.finalAnswer.length > 0 &&
     analysis.steps.length >= 3
   );
@@ -251,9 +172,7 @@ export const helloWorld = onRequest(
     secrets: ["OPENAI_API_KEY"],
   },
   async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    setCors(res);
 
     if (req.method === "OPTIONS") {
       res.status(204).send("");
@@ -268,96 +187,79 @@ export const helloWorld = onRequest(
       return;
     }
 
-    const { questionId, imageUrl, userId } = req.body ?? {};
-
-    if (!questionId || !imageUrl || !userId) {
-      res.status(400).json({
-        success: false,
-        error: "questionId, imageUrl ve userId zorunludur.",
-      });
-      return;
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      res.status(500).json({
-        success: false,
-        error: "OPENAI_API_KEY bulunamadı.",
-      });
-      return;
-    }
-
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const questionRef = db.collection("questions").doc(String(questionId));
-    const userRef = db.collection("users").doc(String(userId));
-
     try {
-      await questionRef.set(
-        {
-          userId: String(userId),
-          imageUrl: String(imageUrl),
-          status: "processing",
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      const uid = await getUidFromRequest(req);
+      const { questionId, imageUrl } = req.body ?? {};
 
-    const prompt = `
+      if (!questionId || !imageUrl) {
+        res.status(400).json({
+          success: false,
+          error: "questionId ve imageUrl zorunludur.",
+        });
+        return;
+      }
+
+      if (!process.env.OPENAI_API_KEY) {
+        res.status(500).json({
+          success: false,
+          error: "OPENAI_API_KEY bulunamadı.",
+        });
+        return;
+      }
+
+      const client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      const questionRef = db.collection("questions").doc(String(questionId));
+      const userRef = db.collection("users").doc(uid);
+
+      const existingQuestionSnap = await questionRef.get();
+
+      const baseQuestionData: Record<string, any> = {
+        userId: uid,
+        imageUrl: String(imageUrl),
+        status: "processing",
+        errorMessage: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (!existingQuestionSnap.exists) {
+        baseQuestionData.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        baseQuestionData.creditCharged = false;
+      }
+
+      await questionRef.set(baseQuestionData, { merge: true });
+
+      const prompt = `
 Görseldeki soruyu çöz ve yalnızca geçerli JSON döndür.
 
 Kurallar:
 - Yalnızca görseldeki bilgileri kullan.
 - lesson yalnızca: Matematik, Fizik, Kimya, Biyoloji.
 - category yalnızca konu adı olsun.
-- recognizedQuestion soruyu eksiksiz ve temiz biçimde yazsın.
-- Çözüm lise düzeyinde olsun.
-- Soruda istenen sonuca kadar çöz; ara sonuçta bırakma.
-- Mümkün olan en kısa, en doğal ve öğrencinin sınavda uygulayacağı yöntemi tercih et.
-- Gereksiz değişken, genel formül veya karmaşık sembol tanımlama.
-- Önce basit ilişki, uzaklık, oran, eşitlik veya şekil bilgisiyle çözülebiliyorsa onu kullan.
-- Şıklı sorularda önce gerçek sonucu bul; finalAnswer yalnızca doğru sonuç olsun, şık harfi yazma.
-- Steps genelde 3-8, gerekirse en fazla 12 adım olsun.
-- Her step bir öncekinin mantıklı devamı olsun.
-- Aynı bilgiyi tekrar eden veya gereksiz adım oluşturma.
-- title 2-5 kelime, kısa ve doğal olsun.
-- explanation tamamlanmış tek kısa cümle olsun; yarım cümle yazma.
-- result yalnızca o adımda elde edilen kısa sonuç olsun.
-- result sayı, kesir, denklem, ifade veya kısa kısa cümle olabilir.
-- Son step.result yalnızca soruda istenen nihai sonucu içersin.
-- Son adım başlığı "Nihai sonuç", "Aranan değer", "Yarıçap", "Olasılık", "Hız", "Kütle" gibi doğal bir başlık olsun; "Doğru seçenek" yazma.
-- finalAnswer son step.result ile tamamen aynı olmalıdır.
-- finalAnswer içinde "=", açıklama, işlem, birim dışı metin veya ara sonuç bulunamaz.
-- Soru sayı, kesir, oran, aralık, kök, ifade veya sembol istiyorsa finalAnswer yalnızca o sonucu içersin.
-- generalMethod, commonMistake ve tips yalnızca 1 kısa cümle olsun.
-- similarQuestion aynı konudan kısa bir örnek soru olsun.
+- Çözüm lise düzeyinde ve en kısa yöntemle olsun.
+- Gereksiz değişken, tekrar eden işlem veya uzun açıklama kullanma.
+- Soruyu sonuca kadar çöz; ara sonuçta bırakma.
+- Şıklı sorularda gerçek sonucu bul; şık harfi yazma.
+- En fazla 8 adım kullan.
+- Her adım kısa olsun: title 2-4 kelime, explanation tek kısa cümle, result yalnızca sonuç.
+- Son adım sorunun istediği nihai sonucu içersin.
+- finalAnswer son step.result ile aynı olsun.
+- finalAnswer yalnızca sonuç olsun. Örnek: "5/24", yanlış: "x = 5/24"
+- generalMethod tek kısa cümle olsun.
 
 Derslere göre:
-- Matematikte yalnızca gerekli temel yöntemleri kullan; türev, integral, limit kullanma.
-- Olasılıkta durumları ayrı hesaplayıp topla; toplam olasılık 1'dir.
-- Geometri ve analitikte mümkünse önce şekilden veya doğrular arası uzaklıktan yararlan; gereksiz değişken tanımlama.
-- Üslü sayılarda uygun ise tabanları eşitle.
-- Kök sorularında köklerin toplamı ve çarpımını doğru kullan.
-- Karmaşık sayılarda i² = -1.
-- Minimum/maksimum sorularında önce sonucun hangi durumda oluştuğunu belirle.
-- Fizikte yatay ve düşey hareketleri ayrı düşün; verilen bağıntıyı doğrudan kullan.
-- Kimyada tepkime, mol, oran ve korunum ilişkilerini kullan.
+- Matematikte türev, integral, limit kullanma.
+- Üslü sayılarda uygunsa tabanları eşitle.
+- Fizikte yatay ve düşey hareketleri ayrı düşün.
+- Kimyada mol, oran ve korunum kullan.
 - Biyolojide yalnızca verilen bilgiye dayan.
-
-Doğru örnek:
-"result": "5/24"
-"finalAnswer": "5/24"
-
-Yanlış örnek:
-"result": "x = 5/24"
-"finalAnswer": "x = 5/24"
 
 JSON:
 {
   "lesson": "",
   "category": "",
-  "recognizedQuestion": "",
   "generalMethod": "",
   "steps": [
     {
@@ -367,10 +269,7 @@ JSON:
       "result": ""
     }
   ],
-  "finalAnswer": "",
-  "commonMistake": "",
-  "tips": "",
-  "similarQuestion": ""
+  "finalAnswer": ""
 }
 `;
 
@@ -408,55 +307,102 @@ JSON:
         throw new Error("Geçerli çözüm üretilemedi.");
       }
 
-      await questionRef.set(
-        {
-          userId: String(userId),
-          imageUrl: String(imageUrl),
-          status: "completed",
-          lesson: analysis.lesson,
-          category: analysis.category,
-          recognizedQuestion: analysis.recognizedQuestion,
-          generalMethod: analysis.generalMethod,
-          steps: analysis.steps,
-          finalAnswer: analysis.finalAnswer,
-          commonMistake: analysis.commonMistake,
-          tips: analysis.tips,
-          similarQuestion: analysis.similarQuestion,
-          errorMessage: null,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      let remainingCredits = 0;
 
-      await userRef.set(
-        {
-          totalAnalyses: admin.firestore.FieldValue.increment(1),
-          credits: admin.firestore.FieldValue.increment(-1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await db.runTransaction(async (tx) => {
+        const [userSnap, questionSnap] = await Promise.all([
+          tx.get(userRef),
+          tx.get(questionRef),
+        ]);
+
+        if (!userSnap.exists) {
+          throw new Error("Kullanıcı dokümanı bulunamadı.");
+        }
+
+        if (!questionSnap.exists) {
+          throw new Error("Soru dokümanı bulunamadı.");
+        }
+
+        const userData = userSnap.data() || {};
+        const questionData = questionSnap.data() || {};
+
+        const alreadyCharged = Boolean(questionData.creditCharged);
+        const currentCredits = Number(userData.credits || 0);
+
+        if (!alreadyCharged) {
+          if (currentCredits <= 0) {
+            throw new Error("Yeterli analiz hakkı yok.");
+          }
+
+          remainingCredits = currentCredits - 1;
+
+          tx.update(userRef, {
+            credits: admin.firestore.FieldValue.increment(-1),
+            totalAnalyses: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          remainingCredits = currentCredits;
+        }
+
+        tx.set(
+          questionRef,
+          {
+            userId: uid,
+            imageUrl: String(imageUrl),
+            status: "completed",
+            creditCharged: true,
+            lesson: analysis.lesson,
+            category: analysis.category,
+            generalMethod: analysis.generalMethod,
+            steps: analysis.steps,
+            finalAnswer: analysis.finalAnswer,
+            errorMessage: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      });
 
       res.status(200).json({
         success: true,
         questionId,
+        remainingCredits,
         data: analysis,
       });
     } catch (error: any) {
       logger.error("helloWorld analyze error", error);
 
-      await questionRef.set(
-        {
-          status: "failed",
-          errorMessage: error?.message ?? "Bilinmeyen hata",
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      const { questionId } = req.body ?? {};
+      if (questionId) {
+        await db
+          .collection("questions")
+          .doc(String(questionId))
+          .set(
+            {
+              status: "failed",
+              errorMessage: error?.message ?? "Bilinmeyen hata",
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+      }
 
-      res.status(500).json({
+      const message = error?.message ?? "Bilinmeyen hata";
+      const lower = String(message).toLowerCase();
+
+      const statusCode =
+        lower.includes("authorization") || lower.includes("token")
+          ? 401
+          : lower.includes("zorunludur")
+          ? 400
+          : lower.includes("yeterli analiz hakkı yok")
+          ? 409
+          : 500;
+
+      res.status(statusCode).json({
         success: false,
-        error: error?.message ?? "Bilinmeyen hata",
+        error: message,
       });
     }
   }
@@ -469,9 +415,7 @@ export const rewardUserForAd = onRequest(
     memory: "256MiB",
   },
   async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    setCors(res);
 
     if (req.method === "OPTIONS") {
       res.status(204).send("");
@@ -487,8 +431,10 @@ export const rewardUserForAd = onRequest(
     }
 
     try {
+      const uid = await getUidFromRequest(req);
+
       const {
-        uid,
+        eventId,
         rewardAmount = 1,
         rewardType = "credit",
         platform = "unknown",
@@ -496,10 +442,10 @@ export const rewardUserForAd = onRequest(
         sourceScreen = "credits_dialog",
       } = req.body ?? {};
 
-      if (!uid) {
+      if (!eventId || String(eventId).trim().length < 5) {
         res.status(400).json({
           success: false,
-          error: "uid zorunludur.",
+          error: "Geçerli bir eventId zorunludur.",
         });
         return;
       }
@@ -520,13 +466,17 @@ export const rewardUserForAd = onRequest(
         return;
       }
 
-      const userRef = db.collection("users").doc(String(uid));
-      const rewardRef = db.collection("rewards").doc();
+      const userRef = db.collection("users").doc(uid);
+      const rewardRef = db.collection("rewards").doc(String(eventId));
 
       let newCredits = 0;
+      let duplicate = false;
 
       await db.runTransaction(async (tx) => {
-        const userSnap = await tx.get(userRef);
+        const [userSnap, rewardSnap] = await Promise.all([
+          tx.get(userRef),
+          tx.get(rewardRef),
+        ]);
 
         if (!userSnap.exists) {
           throw new Error("Kullanıcı dokümanı bulunamadı.");
@@ -534,6 +484,13 @@ export const rewardUserForAd = onRequest(
 
         const userData = userSnap.data() || {};
         const currentCredits = Number(userData.credits || 0);
+
+        if (rewardSnap.exists) {
+          duplicate = true;
+          newCredits = currentCredits;
+          return;
+        }
+
         newCredits = currentCredits + 1;
 
         tx.update(userRef, {
@@ -543,7 +500,7 @@ export const rewardUserForAd = onRequest(
         });
 
         tx.set(rewardRef, {
-          userId: String(uid),
+          userId: uid,
           type: "rewarded_ad",
           rewardType: "credit",
           rewardAmount: 1,
@@ -551,21 +508,33 @@ export const rewardUserForAd = onRequest(
           platform: String(platform),
           adUnit: String(adUnit),
           sourceScreen: String(sourceScreen),
+          eventId: String(eventId),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });
 
       res.status(200).json({
         success: true,
-        addedCredits: 1,
+        duplicate,
+        addedCredits: duplicate ? 0 : 1,
         credits: newCredits,
       });
     } catch (error: any) {
       logger.error("rewardUserForAd error", error);
 
-      res.status(500).json({
+      const message = error?.message ?? "Bilinmeyen hata";
+      const lower = String(message).toLowerCase();
+
+      const statusCode =
+        lower.includes("authorization") || lower.includes("token")
+          ? 401
+          : lower.includes("eventid") || lower.includes("geçersiz")
+          ? 400
+          : 500;
+
+      res.status(statusCode).json({
         success: false,
-        error: error?.message ?? "Bilinmeyen hata",
+        error: message,
       });
     }
   }

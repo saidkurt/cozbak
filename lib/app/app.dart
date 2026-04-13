@@ -1,4 +1,5 @@
 import 'package:cozbak/app/router/app_router.dart';
+import 'package:cozbak/core/network/offline_gate.dart';
 import 'package:cozbak/core/theme/app_theme.dart';
 import 'package:cozbak/shared/widgets/app_bar.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,11 @@ class CozBakApp extends ConsumerWidget {
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       theme: AppTheme.light,
       routerConfig: router,
+       builder: (context, child) {
+        return OfflineGate(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

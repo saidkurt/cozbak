@@ -3,8 +3,11 @@ import 'package:cozbak/app/router/route_names.dart';
 import 'package:cozbak/core/ads/ad_providers.dart';
 import 'package:cozbak/core/theme/app_colors.dart';
 import 'package:cozbak/core/theme/app_radii.dart';
+import 'package:cozbak/core/theme/app_shadows.dart';
 import 'package:cozbak/core/theme/app_spacing.dart';
 import 'package:cozbak/core/theme/app_text_styles.dart';
+import 'package:cozbak/features/analysis/provider/analysis_submit_provider.dart';
+import 'package:cozbak/features/analysis/provider/current_question_id_provider.dart';
 import 'package:cozbak/features/home/provider/recent_questions_provider.dart';
 import 'package:cozbak/features/home/widget/home_banner_ad.dart';
 import 'package:cozbak/features/home/widget/home_hero_card.dart';
@@ -19,31 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 
-void _handleCameraTap(AppUser? user) {
-  final credits = user?.credits ?? 0;
 
-  if (credits <= 0) {
-    AppSnackbar.showError(
-      'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
-    );
-    return;
-  }
-
-  // kamera aç
-}
-
-void _handleGalleryTap(AppUser? user) {
-  final credits = user?.credits ?? 0;
-
-  if (credits <= 0) {
-    AppSnackbar.showError(
-      'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
-    );
-    return;
-  }
-
-  // galeri aç
-}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -89,9 +68,9 @@ class HomeScreen extends ConsumerWidget {
                           style: AppTextStyles.headlineMd,
                         ),
                         const SizedBox(height: 16),
-                        HomeHeroCard(
+                       HomeHeroCard(
   userAsync: userAsync,
-  onCameraTap: () {
+  onCameraTap: () async {
     final user = userAsync.asData?.value;
     final credits = user?.credits ?? 0;
 
@@ -102,9 +81,22 @@ class HomeScreen extends ConsumerWidget {
       return;
     }
 
-    // kamera akışı
+    try {
+      final picked = await ref
+          .read(analysisSubmitProvider.notifier)
+          .pickFromCamera();
+
+      if (!picked) return;
+      if (!context.mounted) return;
+
+      context.push(RouteNames.analysisPreview);
+    } catch (_) {
+      AppSnackbar.showError(
+        'Kamera açılırken bir hata oluştu.',
+      );
+    }
   },
-  onGalleryTap: () {
+  onGalleryTap: () async {
     final user = userAsync.asData?.value;
     final credits = user?.credits ?? 0;
 
@@ -115,51 +107,136 @@ class HomeScreen extends ConsumerWidget {
       return;
     }
 
-    // galeri akışı
+    try {
+      final picked = await ref
+          .read(analysisSubmitProvider.notifier)
+          .pickFromGallery();
+
+      if (!picked) return;
+      if (!context.mounted) return;
+
+      context.push(RouteNames.analysisPreview);
+    } catch (_) {
+      AppSnackbar.showError(
+        'Galeri açılırken bir hata oluştu.',
+      );
+    }
   },
-onWatchAdTap: isRewardLoading
-    ? null
-    : () async {
-        final adService = ref.read(rewardedAdServiceProvider);
-
-        ref.read(rewardedLoadingProvider.notifier).state = true;
-
-        try {
-          final ready = await adService.prepareAdIfNeeded();
-
-          if (!ready) {
-            AppSnackbar.showError(
-              'Reklam şu anda hazırlanamadı. Lütfen tekrar deneyin.',
-            );
-            return;
-          }
-
-          final success = await adService.showAdAndRewardUser();
-
-          if (success) {
-            AppSnackbar.showSuccess('1 çözüm hakkı eklendi.');
-          } else {
-            AppSnackbar.showError(
-              'Reklam ödülü alınamadı. Lütfen tekrar deneyin.',
-            );
-          }
-        } catch (_) {
-          AppSnackbar.showError(
-            'Reklam hazırlanırken bir hata oluştu.',
-          );
-        } finally {
-          ref.read(rewardedLoadingProvider.notifier).state = false;
-        }
-      },
 ),
                         const SizedBox(height: 14),
                         Expanded(
-                          child: RecentSolutionsSection(
-                            recentAsync: recentAsync,
-                            onViewAll: () => context.push(RouteNames.history),
-                          ),
+                          child:RecentSolutionsSection(
+  recentAsync: recentAsync,
+  onViewAll: () => context.push(RouteNames.history),
+  onQuestionTap: (item) {
+    ref.read(currentQuestionIdProvider.notifier).state = item.id;
+    context.push(RouteNames.analysisResult);
+  },
+),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
+                        Material(
+  color: Colors.transparent,
+  child: InkWell(
+    onTap: isRewardLoading
+        ? null
+        : () async {
+            final adService = ref.read(rewardedAdServiceProvider);
+
+            ref.read(rewardedLoadingProvider.notifier).state = true;
+
+            try {
+              final ready = await adService.prepareAdIfNeeded();
+
+              if (!ready) {
+                AppSnackbar.showError(
+                  'Reklam şu anda hazırlanamadı. Lütfen tekrar deneyin.',
+                );
+                return;
+              }
+
+              final success = await adService.showAdAndRewardUser();
+
+              if (success) {
+                AppSnackbar.showSuccess('1 çözüm hakkı eklendi.');
+              } else {
+                AppSnackbar.showError(
+                  'Reklam ödülü alınamadı. Lütfen tekrar deneyin.',
+                );
+              }
+            } finally {
+              ref.read(rewardedLoadingProvider.notifier).state = false;
+            }
+          },
+    borderRadius: BorderRadius.circular(AppRadii.xl),
+    child: Ink(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFA63D),
+            Color(0xFFFF7B1B),
+          ],
+        ),
+        boxShadow: AppShadows.ambientMd,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(AppRadii.full),
+            ),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reklam İzle',
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isRewardLoading
+                      ? 'Hazırlanıyor...'
+                      : '+1 çözüm hakkı kazan',
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.white.withValues(alpha: 0.9),
+            size: 28,
+          ),
+        ],
+      ),
+    ),
+  ),
+),
+const SizedBox(height: 6),
+
                         const HomeBannerAd(),
                       ],
                     ),

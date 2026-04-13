@@ -3,87 +3,9 @@ import 'package:cozbak/core/theme/app_radii.dart';
 import 'package:cozbak/core/theme/app_spacing.dart';
 import 'package:cozbak/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeStatsRow extends StatelessWidget {
-  const HomeStatsRow({
-    super.key,
-    required this.userAsync,
-  });
-
-  final AsyncValue<dynamic> userAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    return userAsync.when(
-      data: (user) {
-        final credits = user?.credits ?? 0;
-        final totalAnalyses = user?.totalAnalyses ?? 0;
-
-        return Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                title: 'Kalan Çözüm',
-                value: '$credits',
-                icon: Icons.auto_awesome_rounded,
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.secondary],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                title: 'Toplam Çözüm',
-                value: '$totalAnalyses',
-                icon: Icons.check_circle_rounded,
-                gradient: const LinearGradient(
-                  colors: [AppColors.secondary, AppColors.success],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Row(
-        children: [
-          Expanded(child: _StatSkeleton()),
-          SizedBox(width: 12),
-          Expanded(child: _StatSkeleton()),
-        ],
-      ),
-      error: (_, __) => const Row(
-        children: [
-          Expanded(
-            child: _StatCard(
-              title: 'Kalan Çözüm',
-              value: '-',
-              icon: Icons.auto_awesome_rounded,
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.secondary],
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: _StatCard(
-              title: 'Toplam Çözüm',
-              value: '-',
-              icon: Icons.check_circle_rounded,
-              gradient: LinearGradient(
-                colors: [AppColors.secondary, AppColors.success],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+class InfoStatCard extends StatelessWidget {
+  const InfoStatCard({
     required this.title,
     required this.value,
     required this.icon,
@@ -134,21 +56,6 @@ class _StatCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatSkeleton extends StatelessWidget {
-  const _StatSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 96,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
     );
   }

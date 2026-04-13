@@ -8,6 +8,9 @@ class RouteNames {
   static const forgotPassword = '/forgot-password';
   static const resetPasswordSent = '/reset-password-sent';
   static const successResetPasswordSent = '/success-reset-password-sent';
+  static const analysisLoading = '/analysis-loading';
+  static const analysisResult = '/analysis-result';
+  static const analysisPreview = '/analysis-preview';
 
   static const home = '/home';
   static const history = '/history';
