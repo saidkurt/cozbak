@@ -1,4 +1,3 @@
-
 import 'package:cozbak/app/router/route_names.dart';
 import 'package:cozbak/core/ads/ad_providers.dart';
 import 'package:cozbak/core/theme/app_colors.dart';
@@ -13,15 +12,11 @@ import 'package:cozbak/features/home/widget/home_banner_ad.dart';
 import 'package:cozbak/features/home/widget/home_hero_card.dart';
 import 'package:cozbak/features/home/widget/recent_solutions_section.dart';
 import 'package:cozbak/shared/provider/current_user_provider.dart';
-
 import 'package:cozbak/shared/widgets/app_aura_background.dart';
 import 'package:cozbak/shared/widgets/app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-
-
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -40,9 +35,9 @@ class HomeScreen extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.screenHorizontal,
-                16,
+                10,
                 AppSpacing.screenHorizontal,
-                AppSpacing.screenBottom,
+                10,
               ),
               child: Column(
                 children: [
@@ -50,192 +45,215 @@ class HomeScreen extends ConsumerWidget {
                     onProfileTap: () => context.push(RouteNames.profile),
                     userAsync: userAsync,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Hoş geldin',
-                          style: AppTextStyles.labelMd.copyWith(
+                          style: AppTextStyles.bodySm.copyWith(
                             color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 2),
                         Text(
                           'Bugün hangi soruyu çözelim?',
-                          style: AppTextStyles.headlineMd,
+                          style: AppTextStyles.titleLg.copyWith(
+                            color: AppColors.onSurface,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                       HomeHeroCard(
-  userAsync: userAsync,
-  onCameraTap: () async {
-    final user = userAsync.asData?.value;
-    final credits = user?.credits ?? 0;
+                        const SizedBox(height: 12),
+                        HomeHeroCard(
+                          userAsync: userAsync,
+                          onCameraTap: () async {
+                            final user = userAsync.asData?.value;
+                            final credits = user?.credits ?? 0;
 
-    if (credits <= 0) {
-      AppSnackbar.showError(
-        'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
-      );
-      return;
-    }
+                            if (credits <= 0) {
+                              AppSnackbar.showError(
+                                'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
+                              );
+                              return;
+                            }
 
-    try {
-      final picked = await ref
-          .read(analysisSubmitProvider.notifier)
-          .pickFromCamera();
+                            try {
+                              final picked = await ref
+                                  .read(analysisSubmitProvider.notifier)
+                                  .pickFromCamera();
 
-      if (!picked) return;
-      if (!context.mounted) return;
+                              if (!picked) return;
+                              if (!context.mounted) return;
 
-      context.push(RouteNames.analysisPreview);
-    } catch (_) {
-      AppSnackbar.showError(
-        'Kamera açılırken bir hata oluştu.',
-      );
-    }
-  },
-  onGalleryTap: () async {
-    final user = userAsync.asData?.value;
-    final credits = user?.credits ?? 0;
+                              context.push(RouteNames.analysisCrop);
+                            } catch (_) {
+                              AppSnackbar.showError(
+                                'Kamera açılırken bir hata oluştu.',
+                              );
+                            }
+                          },
+                          onGalleryTap: () async {
+                            final user = userAsync.asData?.value;
+                            final credits = user?.credits ?? 0;
 
-    if (credits <= 0) {
-      AppSnackbar.showError(
-        'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
-      );
-      return;
-    }
+                            if (credits <= 0) {
+                              AppSnackbar.showError(
+                                'Çözüm hakkınız bitti. Reklam izleyerek +1 hak kazanabilirsiniz.',
+                              );
+                              return;
+                            }
 
-    try {
-      final picked = await ref
-          .read(analysisSubmitProvider.notifier)
-          .pickFromGallery();
+                            try {
+                              final picked = await ref
+                                  .read(analysisSubmitProvider.notifier)
+                                  .pickFromGallery();
 
-      if (!picked) return;
-      if (!context.mounted) return;
+                              if (!picked) return;
+                              if (!context.mounted) return;
 
-      context.push(RouteNames.analysisPreview);
-    } catch (_) {
-      AppSnackbar.showError(
-        'Galeri açılırken bir hata oluştu.',
-      );
-    }
-  },
-),
-                        const SizedBox(height: 14),
+                              context.push(RouteNames.analysisCrop);
+                            } catch (_) {
+                              AppSnackbar.showError(
+                                'Galeri açılırken bir hata oluştu.',
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 10),
                         Expanded(
-                          child:RecentSolutionsSection(
-  recentAsync: recentAsync,
-  onViewAll: () => context.push(RouteNames.history),
-  onQuestionTap: (item) {
-    ref.read(currentQuestionIdProvider.notifier).state = item.id;
-    context.push(RouteNames.analysisResult);
-  },
-),
+                          child: RecentSolutionsSection(
+                            recentAsync: recentAsync,
+                            onViewAll: () => context.push(RouteNames.history),
+                            onQuestionTap: (item) {
+                              ref.read(currentQuestionIdProvider.notifier).state =
+                                  item.id;
+                              context.push(RouteNames.analysisResult);
+                            },
+                          ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Material(
-  color: Colors.transparent,
-  child: InkWell(
-    onTap: isRewardLoading
-        ? null
-        : () async {
-            final adService = ref.read(rewardedAdServiceProvider);
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: isRewardLoading
+                                ? null
+                                : () async {
+                                    final adService =
+                                        ref.read(rewardedAdServiceProvider);
 
-            ref.read(rewardedLoadingProvider.notifier).state = true;
+                                    ref
+                                        .read(rewardedLoadingProvider.notifier)
+                                        .state = true;
 
-            try {
-              final ready = await adService.prepareAdIfNeeded();
+                                    try {
+                                      final ready =
+                                          await adService.prepareAdIfNeeded();
 
-              if (!ready) {
-                AppSnackbar.showError(
-                  'Reklam şu anda hazırlanamadı. Lütfen tekrar deneyin.',
-                );
-                return;
-              }
+                                      if (!ready) {
+                                        AppSnackbar.showError(
+                                          'Reklam şu anda hazırlanamadı. Lütfen tekrar deneyin.',
+                                        );
+                                        return;
+                                      }
 
-              final success = await adService.showAdAndRewardUser();
+                                      final success =
+                                          await adService.showAdAndRewardUser();
 
-              if (success) {
-                AppSnackbar.showSuccess('1 çözüm hakkı eklendi.');
-              } else {
-                AppSnackbar.showError(
-                  'Reklam ödülü alınamadı. Lütfen tekrar deneyin.',
-                );
-              }
-            } finally {
-              ref.read(rewardedLoadingProvider.notifier).state = false;
-            }
-          },
-    borderRadius: BorderRadius.circular(AppRadii.xl),
-    child: Ink(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFA63D),
-            Color(0xFFFF7B1B),
-          ],
-        ),
-        boxShadow: AppShadows.ambientMd,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(AppRadii.full),
-            ),
-            child: const Icon(
-              Icons.play_arrow_rounded,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Reklam İzle',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isRewardLoading
-                      ? 'Hazırlanıyor...'
-                      : '+1 çözüm hakkı kazan',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: Colors.white.withValues(alpha: 0.92),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 28,
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-const SizedBox(height: 6),
-
+                                      if (success) {
+                                        AppSnackbar.showSuccess(
+                                          '1 çözüm hakkı eklendi.',
+                                        );
+                                      } else {
+                                        AppSnackbar.showError(
+                                          'Reklam ödülü alınamadı. Lütfen tekrar deneyin.',
+                                        );
+                                      }
+                                    } finally {
+                                      ref
+                                          .read(rewardedLoadingProvider.notifier)
+                                          .state = false;
+                                    }
+                                  },
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            child: Ink(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadii.lg),
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFFFA63D),
+                                    Color(0xFFFF7B1B),
+                                  ],
+                                ),
+                                boxShadow: AppShadows.ambientMd,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.full,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Reklam İzle',
+                                          style: AppTextStyles.bodySm.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          isRewardLoading
+                                              ? 'Hazırlanıyor...'
+                                              : '+1 çözüm hakkı kazan',
+                                          style: AppTextStyles.bodySm.copyWith(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.92,
+                                            ),
+                                            fontSize: 11,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    size: 24,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         const HomeBannerAd(),
                       ],
                     ),
@@ -271,8 +289,8 @@ class _HomeTopBar extends StatelessWidget {
             return GestureDetector(
               onTap: onProfileTap,
               child: Container(
-                width: 46,
-                height: 46,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppRadii.full),
                   gradient: const LinearGradient(
@@ -282,7 +300,7 @@ class _HomeTopBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                padding: const EdgeInsets.all(1.4),
+                padding: const EdgeInsets.all(1.2),
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
@@ -304,8 +322,8 @@ class _HomeTopBar extends StatelessWidget {
             );
           },
           loading: () => Container(
-            width: 46,
-            height: 46,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppRadii.full),
@@ -337,8 +355,9 @@ class _ProfileFallback extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         letter,
-        style: AppTextStyles.titleMd.copyWith(
+        style: AppTextStyles.bodyMd.copyWith(
           color: AppColors.primary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

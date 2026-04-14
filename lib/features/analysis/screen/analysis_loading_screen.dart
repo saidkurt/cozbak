@@ -35,105 +35,136 @@ class _AnalysisLoadingScreenState
   late final Animation<double> _pulseAnimation;
 
   ProviderSubscription<AsyncValue<QuestionModel?>>? _questionSub;
+
   bool _analysisStarted = false;
   bool _canListenQuestion = false;
   bool _didNavigateToResult = false;
+  bool _completionFlowStarted = false;
 
-@override
-void initState() {
-  super.initState();
+  AnalysisStage _visibleStage = AnalysisStage.uploading;
 
-  _ringController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat();
+  @override
+  void initState() {
+    super.initState();
 
-  _pulseController = AnimationController(
-    vsync: this,
-    duration: AppDurations.slow * 2,
-  )..repeat(reverse: true);
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
 
-  _pulseAnimation = Tween<double>(
-    begin: 0.96,
-    end: 1.04,
-  ).animate(
-    CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ),
-  );
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: AppDurations.slow * 2,
+    )..repeat(reverse: true);
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    await _startAnalysisOnce();
-  });
-}
+    _pulseAnimation = Tween<double>(
+      begin: 0.97,
+      end: 1.03,
+    ).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
-Future<void> _navigateToResult() async {
-  if (_didNavigateToResult || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _startAnalysisOnce();
+    });
+  }
 
-  _didNavigateToResult = true;
+  Future<void> _navigateToResult() async {
+    if (_didNavigateToResult || !mounted) return;
 
-  await Future.delayed(const Duration(milliseconds: 250));
-  if (!mounted) return;
+    _didNavigateToResult = true;
 
-  context.pushReplacement(RouteNames.analysisResult);
-}
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
 
-void _listenQuestionStatus() {
-  _questionSub = ref.listenManual<AsyncValue<QuestionModel?>>(
-    currentQuestionProvider,
-    (previous, next) {
-      next.when(
-        data: (question) {
-          debugPrint('question listener data => ${question?.status}');
-          if (!mounted || question == null) return;
+    context.pushReplacement(RouteNames.analysisResult);
+  }
 
-          if (question.status == 'completed') {
-            _navigateToResult();
-            return;
-          }
+  Future<void> _showCompletedFlow() async {
+    if (_completionFlowStarted || !mounted) return;
+    _completionFlowStarted = true;
 
-          if (question.status == 'failed') {
-            AppSnackbar.showError(
-              question.errorMessage ?? 'Çözüm hazırlanırken bir hata oluştu.',
-            );
-            context.pop();
-          }
-        },
-        loading: () {
-          debugPrint('question listener loading');
-        },
-        error: (e, st) {
-          debugPrint('question listener error => $e');
-          debugPrint('$st');
-        },
-      );
-    },
-    fireImmediately: true,
-  );
-}
+    setState(() {
+      _visibleStage = AnalysisStage.uploading;
+    });
 
-Future<void> _startAnalysisOnce() async {
-  if (_analysisStarted) return;
-  _analysisStarted = true;
-
-  try {
-    await ref.read(analysisSubmitProvider.notifier).startAnalysis();
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
     setState(() {
-      _canListenQuestion = true;
+      _visibleStage = AnalysisStage.processing;
     });
 
-    _listenQuestionStatus();
-  } catch (_) {
-    _analysisStarted = false;
-
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    AppSnackbar.showError('Analiz başlatılamadı.');
-    context.pop();
+
+    setState(() {
+      _visibleStage = AnalysisStage.completed;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    _navigateToResult();
   }
-}
+
+  void _listenQuestionStatus() {
+    _questionSub = ref.listenManual<AsyncValue<QuestionModel?>>(
+      currentQuestionProvider,
+      (previous, next) {
+        next.when(
+          data: (question) {
+            if (!mounted || question == null) return;
+
+            if (question.status == 'completed') {
+              _showCompletedFlow();
+              return;
+            }
+
+            if (question.status == 'failed') {
+              setState(() {
+                _visibleStage = AnalysisStage.failed;
+              });
+
+              AppSnackbar.showError(
+                question.errorMessage ?? 'Çözüm hazırlanırken bir hata oluştu.',
+              );
+              context.pop();
+            }
+          },
+          loading: () {},
+          error: (_, __) {},
+        );
+      },
+      fireImmediately: true,
+    );
+  }
+
+  Future<void> _startAnalysisOnce() async {
+    if (_analysisStarted) return;
+    _analysisStarted = true;
+
+    try {
+      await ref.read(analysisSubmitProvider.notifier).startAnalysis();
+      if (!mounted) return;
+
+      setState(() {
+        _canListenQuestion = true;
+        _visibleStage = AnalysisStage.uploading;
+      });
+
+      _listenQuestionStatus();
+    } catch (_) {
+      _analysisStarted = false;
+
+      if (!mounted) return;
+      AppSnackbar.showError('Analiz başlatılamadı.');
+      context.pop();
+    }
+  }
 
   @override
   void dispose() {
@@ -146,40 +177,9 @@ Future<void> _startAnalysisOnce() async {
   @override
   Widget build(BuildContext context) {
     final imageFile = ref.watch(analysisImageProvider);
-final questionAsync =
-    _canListenQuestion ? ref.watch(currentQuestionProvider) : null;
+    final stage = _visibleStage;
+    final meta = _statusMeta(stage);
 
-AnalysisStage stage = AnalysisStage.uploading;
-
-if (_canListenQuestion && questionAsync != null) {
-  stage = questionAsync.maybeWhen(
-    data: (question) {
-      final status = question?.status ?? 'uploading';
-
-      switch (status) {
-        case 'uploading':
-          return AnalysisStage.uploading;
-        case 'processing':
-          return AnalysisStage.processing;
-        case 'completed':
-          return AnalysisStage.completed;
-        case 'failed':
-          return AnalysisStage.failed;
-        default:
-          return AnalysisStage.processing;
-      }
-    },
-    orElse: () => AnalysisStage.processing,
-  );
-}
-
-final meta = _statusMeta(stage);
-
-if (stage == AnalysisStage.completed) {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _navigateToResult();
-  });
-}
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Stack(
@@ -187,85 +187,100 @@ if (stage == AnalysisStage.completed) {
           const AppAuraBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenHorizontal,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenHorizontal,
+                10,
+                AppSpacing.screenHorizontal,
+                10,
               ),
               child: Column(
                 children: [
-                  const SizedBox(height: AppSpacing.lg),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IgnorePointer(
                       ignoring: true,
                       child: Opacity(
-                        opacity: 0.55,
+                        opacity: 0.50,
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainerLowest
-                                .withValues(alpha: 0.72),
+                                .withValues(alpha: 0.78),
                             borderRadius:
                                 BorderRadius.circular(AppRadii.full),
                             boxShadow: AppShadows.ambientMd,
                           ),
                           child: Icon(
                             Icons.arrow_back_rounded,
+                            size: 20,
                             color: AppColors.primary.withValues(alpha: 0.92),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _AnimatedPreviewRing(
-                          imageFile: imageFile,
-                          ringController: _ringController,
-                          pulseAnimation: _pulseAnimation,
-                          stage: stage,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        Text(
-                          meta.title,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.displayMd.copyWith(
-                            fontSize: 28,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                          ),
-                          child: Text(
-                            meta.description,
-                            textAlign: TextAlign.center,
-                            style: AppTextStyles.bodyLg.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                              height: 1.6,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xxxl),
-                        _StatusTimeline(stage: stage),
-                        const Spacer(),
-                        Text(
-                          _bottomHint(stage),
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyMd.copyWith(
-                            color: AppColors.onSurfaceVariant.withValues(
-                              alpha: 0.78,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xxxl),
-                      ],
+                  const Spacer(),
+                  _AnimatedPreviewRing(
+                    imageFile: imageFile,
+                    ringController: _ringController,
+                    pulseAnimation: _pulseAnimation,
+                    stage: stage,
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Sorun analiz ediliyor',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.titleLg.copyWith(
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      meta.description,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySm.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _StatusTimeline(stage: stage),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StageDot(
+                        isActive: stage == AnalysisStage.uploading,
+                        isPassed: stage == AnalysisStage.processing ||
+                            stage == AnalysisStage.completed,
+                      ),
+                      const SizedBox(width: 6),
+                      _StageDot(
+                        isActive: stage == AnalysisStage.processing,
+                        isPassed: stage == AnalysisStage.completed,
+                      ),
+                      const SizedBox(width: 6),
+                      _StageDot(
+                        isActive: stage == AnalysisStage.completed,
+                        isPassed: false,
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    _bottomHint(stage),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodySm.copyWith(
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.78),
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -279,20 +294,18 @@ if (stage == AnalysisStage.completed) {
     switch (stage) {
       case AnalysisStage.uploading:
         return const _LoadingMeta(
-          title: 'Fotoğraf hazırlanıyor',
-          description:
-              'Sorun güvenli şekilde yükleniyor ve çözüm için hazırlanıyor.',
+          title: 'Fotoğraf yükleniyor',
+          description: 'Fotoğraf hazırlanıyor ve çözüm için güvenli şekilde yükleniyor.',
         );
       case AnalysisStage.processing:
         return const _LoadingMeta(
-          title: 'Çözüm hazırlanıyor',
-          description:
-              'Sorun analiz ediliyor ve sana özel adım adım çözüm hazırlanıyor.',
+          title: 'Soru okunuyor',
+          description: 'Metin ve matematiksel ifadeler okunuyor.',
         );
       case AnalysisStage.completed:
         return const _LoadingMeta(
-          title: 'Çözüm hazır',
-          description: 'Analiz tamamlandı, sonuç ekranı hazırlanıyor.',
+          title: 'Çözüm hazırlanıyor',
+          description: 'Son kontroller yapılıyor ve sonuç hazırlanıyor.',
         );
       case AnalysisStage.failed:
         return const _LoadingMeta(
@@ -305,10 +318,11 @@ if (stage == AnalysisStage.completed) {
   String _bottomHint(AnalysisStage stage) {
     switch (stage) {
       case AnalysisStage.uploading:
+        return 'Fotoğraf yükleniyor...';
       case AnalysisStage.processing:
-        return 'Bu işlem genelde 1-2 dakika sürer.';
+        return 'Soru okunuyor...';
       case AnalysisStage.completed:
-        return 'Sonuç ekranı açılıyor...';
+        return 'Çözüm ekranı açılıyor...';
       case AnalysisStage.failed:
         return 'İşlem sonlandırıldı.';
     }
@@ -337,8 +351,8 @@ class _AnimatedPreviewRing extends StatelessWidget {
     final isFailed = stage == AnalysisStage.failed;
 
     return SizedBox(
-      width: 220,
-      height: 220,
+      width: 170,
+      height: 170,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -348,8 +362,8 @@ class _AnimatedPreviewRing extends StatelessWidget {
               return Transform.scale(
                 scale: pulseAnimation.value,
                 child: Container(
-                  width: 170,
-                  height: 170,
+                  width: 126,
+                  height: 126,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -359,9 +373,9 @@ class _AnimatedPreviewRing extends StatelessWidget {
                                 : isCompleted
                                     ? AppColors.success
                                     : AppColors.primary)
-                            .withValues(alpha: 0.12),
-                        blurRadius: 44,
-                        spreadRadius: 6,
+                            .withValues(alpha: 0.10),
+                        blurRadius: 30,
+                        spreadRadius: 4,
                       ),
                     ],
                   ),
@@ -373,7 +387,7 @@ class _AnimatedPreviewRing extends StatelessWidget {
             RotationTransition(
               turns: ringController,
               child: CustomPaint(
-                size: const Size(176, 176),
+                size: const Size(136, 136),
                 painter: _GradientRingPainter(
                   gradient: AppGradients.primaryCta,
                 ),
@@ -381,22 +395,22 @@ class _AnimatedPreviewRing extends StatelessWidget {
             )
           else
             CustomPaint(
-              size: const Size(176, 176),
+              size: const Size(136, 136),
               painter: _StaticRingPainter(
                 color: isFailed ? AppColors.error : AppColors.success,
               ),
             ),
           Container(
-            width: 128,
-            height: 128,
-            padding: const EdgeInsets.all(6),
+            width: 96,
+            height: 96,
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(36),
+              borderRadius: BorderRadius.circular(28),
               boxShadow: AppShadows.ambientLg,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(22),
               child: imageFile == null
                   ? Container(
                       color: AppColors.surfaceContainerHigh,
@@ -404,7 +418,7 @@ class _AnimatedPreviewRing extends StatelessWidget {
                       child: Icon(
                         Icons.image_rounded,
                         color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
-                        size: 34,
+                        size: 26,
                       ),
                     )
                   : Image(
@@ -441,27 +455,27 @@ class _CornerBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      right: 34,
-      bottom: 34,
+      right: 22,
+      bottom: 22,
       child: Container(
-        width: 42,
-        height: 42,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(AppRadii.full),
-          border: Border.all(color: Colors.white, width: 3),
+          border: Border.all(color: Colors.white, width: 2.5),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.22),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+              color: color.withValues(alpha: 0.20),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Icon(
           icon,
           color: Colors.white,
-          size: 22,
+          size: 18,
         ),
       ),
     );
@@ -477,161 +491,160 @@ class _StatusTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _TimelineTile(
+    final List<_TimelineData> items = [];
+
+    if (stage == AnalysisStage.uploading) {
+      items.add(
+        const _TimelineData(
+          key: 'uploading',
           title: 'Fotoğraf yükleniyor',
-          subtitle: stage == AnalysisStage.uploading ? 'İşleniyor...' : null,
-          state: stage == AnalysisStage.uploading
-              ? _TimelineState.active
-              : stage == AnalysisStage.processing ||
-                      stage == AnalysisStage.completed
-                  ? _TimelineState.completed
-                  : _TimelineState.idle,
+          subtitle: 'Sorun hazırlanıyor',
           icon: Icons.cloud_upload_rounded,
+          state: _TimelineState.active,
         ),
-        const SizedBox(height: AppSpacing.md),
-        _TimelineTile(
+      );
+    }
+
+    if (stage == AnalysisStage.processing) {
+      items.add(
+        const _TimelineData(
+          key: 'reading',
           title: 'Soru okunuyor',
-          subtitle: stage == AnalysisStage.processing ? 'İşleniyor...' : null,
-          state: stage == AnalysisStage.processing
-              ? _TimelineState.active
-              : stage == AnalysisStage.completed
-                  ? _TimelineState.completed
-                  : stage == AnalysisStage.failed
-                      ? _TimelineState.failed
-                      : _TimelineState.idle,
+          subtitle: 'Metin algılanıyor',
           icon: Icons.center_focus_strong_rounded,
+          state: _TimelineState.active,
         ),
-        const SizedBox(height: AppSpacing.md),
-        _TimelineTile(
-          title: stage == AnalysisStage.failed
-              ? 'Çözüm hazırlanamadı'
-              : 'Çözüm hazırlanıyor',
-          subtitle: stage == AnalysisStage.completed
-              ? 'Tamamlandı'
-              : stage == AnalysisStage.failed
-                  ? 'İşlem durdu'
-                  : stage == AnalysisStage.processing
-                      ? 'İşleniyor...'
-                      : null,
-          state: stage == AnalysisStage.completed
-              ? _TimelineState.completed
-              : stage == AnalysisStage.failed
-                  ? _TimelineState.failed
-                  : _TimelineState.idle,
-          icon: stage == AnalysisStage.failed
-              ? Icons.error_outline_rounded
-              : Icons.psychology_alt_rounded,
+      );
+    }
+
+    if (stage == AnalysisStage.completed) {
+      items.add(
+        const _TimelineData(
+          key: 'solving',
+          title: 'Çözüm hazırlanıyor',
+          subtitle: 'Son kontroller yapılıyor',
+          icon: Icons.psychology_alt_rounded,
+          state: _TimelineState.active,
         ),
-      ],
+      );
+    }
+
+    if (stage == AnalysisStage.failed) {
+      items.add(
+        const _TimelineData(
+          key: 'failed',
+          title: 'Bir sorun oluştu',
+          subtitle: 'Lütfen tekrar dene',
+          icon: Icons.error_outline_rounded,
+          state: _TimelineState.failed,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 86,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 700),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0, 0.42),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+          );
+
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
+          );
+        },
+        child: _TimelineCard(
+          key: ValueKey(items.first.key),
+          data: items.first,
+        ),
+      ),
     );
   }
 }
 
-enum _TimelineState {
-  idle,
-  active,
-  completed,
-  failed,
-}
-
-class _TimelineTile extends StatelessWidget {
-  const _TimelineTile({
-    required this.title,
-    required this.state,
-    required this.icon,
-    this.subtitle,
+class _TimelineCard extends StatelessWidget {
+  const _TimelineCard({
+    super.key,
+    required this.data,
   });
 
-  final String title;
-  final String? subtitle;
-  final _TimelineState state;
-  final IconData icon;
+  final _TimelineData data;
 
   @override
   Widget build(BuildContext context) {
-    final isActive = state == _TimelineState.active;
-    final isCompleted = state == _TimelineState.completed;
-    final isFailed = state == _TimelineState.failed;
-    final isIdle = state == _TimelineState.idle;
+    final isFailed = data.state == _TimelineState.failed;
 
-    return AnimatedContainer(
-      duration: AppDurations.normal,
-      curve: Curves.easeOut,
+    return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 12,
+      ),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.surfaceContainerLowest
-            : AppColors.surfaceContainerLow.withValues(
-                alpha: isIdle ? 0.55 : 0.9,
-              ),
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        boxShadow: isActive ? AppShadows.ambientMd : null,
+        boxShadow: AppShadows.ambientMd,
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: isCompleted
-                  ? AppColors.correctContainer
-                  : isFailed
-                      ? AppColors.error.withValues(alpha: 0.12)
-                      : isActive
-                          ? AppColors.primary.withValues(alpha: 0.10)
-                          : AppColors.surfaceContainerHighest,
+              color: isFailed
+                  ? AppColors.error.withValues(alpha: 0.12)
+                  : AppColors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(AppRadii.full),
             ),
             child: Icon(
-              isCompleted
-                  ? Icons.check_circle_rounded
-                  : isFailed
-                      ? Icons.error_rounded
-                      : icon,
-              color: isCompleted
-                  ? AppColors.tertiary
-                  : isFailed
-                      ? AppColors.error
-                      : isActive
-                          ? AppColors.primary
-                          : AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+              data.icon,
+              size: 20,
+              color: isFailed ? AppColors.error : AppColors.primary,
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: AppTextStyles.titleMd.copyWith(
-                    color: isIdle
-                        ? AppColors.onSurface.withValues(alpha: 0.42)
-                        : AppColors.onSurface,
+                  data.title,
+                  style: AppTextStyles.bodySm.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
                   ),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: AppTextStyles.labelMd.copyWith(
-                      color: isFailed ? AppColors.error : AppColors.primary,
-                      letterSpacing: 0.6,
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  data.subtitle,
+                  style: AppTextStyles.bodySm.copyWith(
+                    fontSize: 11,
+                    color: isFailed ? AppColors.error : AppColors.primary,
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          if (isActive)
+          if (!isFailed)
             SizedBox(
-              width: 18,
-              height: 18,
+              width: 16,
+              height: 16,
               child: CircularProgressIndicator(
-                strokeWidth: 2.2,
+                strokeWidth: 2,
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   AppColors.primary,
                 ),
@@ -644,6 +657,52 @@ class _TimelineTile extends StatelessWidget {
   }
 }
 
+class _StageDot extends StatelessWidget {
+  const _StageDot({
+    required this.isActive,
+    required this.isPassed,
+  });
+
+  final bool isActive;
+  final bool isPassed;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      width: isActive ? 18 : 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: isActive || isPassed
+            ? AppColors.primary
+            : AppColors.primary.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
+}
+
+class _TimelineData {
+  const _TimelineData({
+    required this.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.state,
+  });
+
+  final String key;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final _TimelineState state;
+}
+
+enum _TimelineState {
+  active,
+  failed,
+}
+
 class _GradientRingPainter extends CustomPainter {
   const _GradientRingPainter({
     required this.gradient,
@@ -654,7 +713,7 @@ class _GradientRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    const strokeWidth = 8.0;
+    const strokeWidth = 7.0;
 
     final basePaint = Paint()
       ..color = AppColors.primary.withValues(alpha: 0.10)
@@ -694,7 +753,7 @@ class _StaticRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const strokeWidth = 8.0;
+    const strokeWidth = 7.0;
 
     final paint = Paint()
       ..color = color.withValues(alpha: 0.90)
@@ -705,9 +764,9 @@ class _StaticRingPainter extends CustomPainter {
     final glowPaint = Paint()
       ..color = color.withValues(alpha: 0.16)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
+      ..strokeWidth = 12
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
     final center = size.center(Offset.zero);
     final radius = (size.width / 2) - strokeWidth;

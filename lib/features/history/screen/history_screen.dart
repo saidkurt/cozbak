@@ -26,31 +26,39 @@ class HistoryScreen extends ConsumerWidget {
           const AppAuraBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenHorizontal,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenHorizontal,
+                10,
+                AppSpacing.screenHorizontal,
+                10,
               ),
               child: Column(
                 children: [
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       _CircleBackButton(
                         onTap: () => context.pop(),
                       ),
-                      const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Geçmiş Sorularım',
-                              style: AppTextStyles.headlineMd,
+                              style: AppTextStyles.titleLg.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface,
+                                height: 1.1,
+                              ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               'Daha önce çözdüğün sorular burada listelenir.',
                               style: AppTextStyles.bodySm.copyWith(
                                 color: AppColors.onSurfaceVariant,
+                                height: 1.3,
                               ),
                             ),
                           ],
@@ -58,7 +66,7 @@ class HistoryScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: historyAsync.when(
                       data: (items) {
@@ -68,11 +76,11 @@ class HistoryScreen extends ConsumerWidget {
 
                         return ListView.separated(
                           padding: const EdgeInsets.only(
-                            bottom: AppSpacing.xl,
+                            bottom: AppSpacing.md,
                           ),
                           itemCount: items.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: AppSpacing.md),
+                              const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final item = items[index];
 
@@ -91,7 +99,7 @@ class HistoryScreen extends ConsumerWidget {
                       loading: () => ListView.separated(
                         itemCount: 6,
                         separatorBuilder: (_, __) =>
-                            const SizedBox(height: AppSpacing.md),
+                            const SizedBox(height: 8),
                         itemBuilder: (_, __) => const _HistoryCardSkeleton(),
                       ),
                       error: (_, __) => const _EmptyHistoryState(
@@ -128,7 +136,7 @@ class _HistoryQuestionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.sm),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -138,8 +146,8 @@ class _HistoryQuestionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 58,
+                height: 58,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(AppRadii.md),
@@ -151,15 +159,17 @@ class _HistoryQuestionCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(
                           Icons.photo_rounded,
+                          size: 18,
                           color: AppColors.onSurfaceVariant,
                         ),
                       )
                     : const Icon(
                         Icons.photo_rounded,
+                        size: 18,
                         color: AppColors.onSurfaceVariant,
                       ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,14 +184,15 @@ class _HistoryQuestionCard extends StatelessWidget {
                             style: AppTextStyles.labelMd.copyWith(
                               color: AppColors.primary,
                               fontSize: 10,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 7,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: badge.background,
@@ -191,14 +202,15 @@ class _HistoryQuestionCard extends StatelessWidget {
                           child: Text(
                             badge.label,
                             style: AppTextStyles.labelMd.copyWith(
-                              fontSize: 9,
+                              fontSize: 8.5,
                               color: badge.foreground,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       item.recognizedQuestion.isEmpty
                           ? '${item.lesson} • ${item.category}'
@@ -207,27 +219,30 @@ class _HistoryQuestionCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySm.copyWith(
                         color: AppColors.onSurface,
-                        height: 1.45,
+                        height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             item.finalAnswer.isEmpty
                                 ? 'Sonuç hazırlanıyor'
-                                : 'Sonuç: ${item.finalAnswer}',
+                                : 'Sonuç: ${_normalizeInlineMath(item.finalAnswer)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.labelMd.copyWith(
                               color: AppColors.secondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Icon(
                           Icons.chevron_right_rounded,
+                          size: 20,
                           color: AppColors.onSurfaceVariant.withValues(
                             alpha: 0.70,
                           ),
@@ -245,13 +260,36 @@ class _HistoryQuestionCard extends StatelessWidget {
   }
 }
 
+String _normalizeInlineMath(String value) {
+  return value
+      .replaceAllMapped(
+        RegExp(r'\\frac\{([^}]*)\}\{([^}]*)\}'),
+        (m) => '${m.group(1)}/${m.group(2)}',
+      )
+      .replaceAllMapped(
+        RegExp(r'\\sqrt\{([^}]*)\}'),
+        (m) => '√${m.group(1)}',
+      )
+      .replaceAll(r'\cdot', '·')
+      .replaceAll(r'\pi', 'π')
+      .replaceAll(r'\tan', 'tan')
+      .replaceAll(r'\sin', 'sin')
+      .replaceAll(r'\cos', 'cos')
+      .replaceAll(r'\log', 'log')
+      .replaceAll(r'\ln', 'ln')
+      .replaceAll('{', '')
+      .replaceAll('}', '')
+      .replaceAll('\\', '')
+      .trim();
+}
+
 class _HistoryCardSkeleton extends StatelessWidget {
   const _HistoryCardSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
+      height: 82,
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -272,7 +310,7 @@ class _EmptyHistoryState extends StatelessWidget {
     return Center(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -282,8 +320,8 @@ class _EmptyHistoryState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 58,
+              height: 58,
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerHigh,
                 shape: BoxShape.circle,
@@ -291,22 +329,24 @@ class _EmptyHistoryState extends StatelessWidget {
               child: const Icon(
                 Icons.history_rounded,
                 color: AppColors.primary,
-                size: 34,
+                size: 28,
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: 12),
             Text(
               'Geçmiş Sorularım',
               textAlign: TextAlign.center,
-              style: AppTextStyles.titleMd,
+              style: AppTextStyles.titleMd.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 6),
             Text(
               text,
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMd.copyWith(
+              style: AppTextStyles.bodySm.copyWith(
                 color: AppColors.onSurfaceVariant,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
           ],
@@ -331,8 +371,8 @@ class _CircleBackButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.full),
         child: Ink(
-          width: 44,
-          height: 44,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest.withValues(alpha: 0.82),
             borderRadius: BorderRadius.circular(AppRadii.full),
@@ -340,6 +380,7 @@ class _CircleBackButton extends StatelessWidget {
           ),
           child: Icon(
             Icons.arrow_back_rounded,
+            size: 20,
             color: AppColors.primary,
           ),
         ),

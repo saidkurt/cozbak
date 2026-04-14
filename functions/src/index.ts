@@ -16,11 +16,11 @@ type QuestionStep = {
 type QuestionAnalysis = {
   lesson: string;
   category: string;
+  recognizedQuestion: string;
   generalMethod: string;
   steps: QuestionStep[];
   finalAnswer: string;
 };
-
 
 function setCors(res: any) {
   res.set("Access-Control-Allow-Origin", "*");
@@ -68,17 +68,21 @@ function sanitizeAnalysis(data: any): QuestionAnalysis {
         )
     : [];
 
-  return {
-    lesson: typeof data?.lesson === "string" ? data.lesson.trim() : "",
-    category: typeof data?.category === "string" ? data.category.trim() : "",
-    generalMethod:
-      typeof data?.generalMethod === "string"
-        ? data.generalMethod.trim().slice(0, 150)
-        : "",
-    steps,
-    finalAnswer:
-      typeof data?.finalAnswer === "string" ? data.finalAnswer.trim() : "",
-  };
+ return {
+  lesson: typeof data?.lesson === "string" ? data.lesson.trim() : "",
+  category: typeof data?.category === "string" ? data.category.trim() : "",
+  recognizedQuestion:
+    typeof data?.recognizedQuestion === "string"
+      ? data.recognizedQuestion.trim().slice(0, 500)
+      : "",
+  generalMethod:
+    typeof data?.generalMethod === "string"
+      ? data.generalMethod.trim().slice(0, 150)
+      : "",
+  steps,
+  finalAnswer:
+    typeof data?.finalAnswer === "string" ? data.finalAnswer.trim() : "",
+};
 }
 
 
@@ -231,35 +235,48 @@ export const helloWorld = onRequest(
 
       await questionRef.set(baseQuestionData, { merge: true });
 
-      const prompt = `
-Görseldeki soruyu çöz ve yalnızca geçerli JSON döndür.
+     const prompt = `
+Görseldeki matematik sorusunu çöz ve yalnızca geçerli JSON döndür.
 
 Kurallar:
 - Yalnızca görseldeki bilgileri kullan.
-- lesson yalnızca: Matematik, Fizik, Kimya, Biyoloji.
+- lesson her zaman "Matematik" olsun.
 - category yalnızca konu adı olsun.
-- Çözüm lise düzeyinde ve en kısa yöntemle olsun.
+- Çözüm lise düzeyinde, en kısa ve en doğru yöntemle olsun.
 - Gereksiz değişken, tekrar eden işlem veya uzun açıklama kullanma.
 - Soruyu sonuca kadar çöz; ara sonuçta bırakma.
 - Şıklı sorularda gerçek sonucu bul; şık harfi yazma.
-- En fazla 8 adım kullan.
-- Her adım kısa olsun: title 2-4 kelime, explanation tek kısa cümle, result yalnızca sonuç.
+- En fazla 6 adım kullan.
+- Her adım kısa olsun:
+  - title: 2-4 kelime
+  - explanation: tek kısa Türkçe cümle
+  - result: yalnızca o adımın matematiksel sonucu
 - Son adım sorunun istediği nihai sonucu içersin.
-- finalAnswer son step.result ile aynı olsun.
+- finalAnswer, son step.result ile aynı olsun.
 - finalAnswer yalnızca sonuç olsun. Örnek: "5/24", yanlış: "x = 5/24"
-- generalMethod tek kısa cümle olsun.
+- generalMethod tek kısa Türkçe cümle olsun.
 
-Derslere göre:
-- Matematikte türev, integral, limit kullanma.
+Matematik formatı:
+- explanation alanını normal Türkçe kısa cümle olarak yaz.
+- result ve finalAnswer alanlarını mümkün olduğunda LaTeX formatında yaz.
+- Kesirleri \\frac{a}{b} biçiminde yaz.
+- Karekökleri \\sqrt{} biçiminde yaz.
+- π için \\pi kullan.
+- Trigonometrik ifadeleri \\tan, \\sin, \\cos biçiminde yaz.
+- result alanında gereksiz metin yazma, yalnızca ifade veya sonuç yaz.
+- Eşitlik gerekiyorsa yalnızca sorunun istediği nihai biçimi yaz.
+- finalAnswer içinde "x =" gibi gereksiz ön ek kullanma.
+
+Ek kurallar:
+- Türev, integral, limit kullanma.
 - Üslü sayılarda uygunsa tabanları eşitle.
-- Fizikte yatay ve düşey hareketleri ayrı düşün.
-- Kimyada mol, oran ve korunum kullan.
-- Biyolojide yalnızca verilen bilgiye dayan.
+- Soruda istenen nihai ifade sayı, sıralama, aralık veya cebirsel ifade olabilir; finalAnswer tam olarak bunu vermelidir.
 
 JSON:
 {
-  "lesson": "",
+  "lesson": "Matematik",
   "category": "",
+  "recognizedQuestion": "",
   "generalMethod": "",
   "steps": [
     {
@@ -355,6 +372,7 @@ JSON:
             lesson: analysis.lesson,
             category: analysis.category,
             generalMethod: analysis.generalMethod,
+            recognizedQuestion: analysis.recognizedQuestion,
             steps: analysis.steps,
             finalAnswer: analysis.finalAnswer,
             errorMessage: null,

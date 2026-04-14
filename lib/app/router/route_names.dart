@@ -11,6 +11,7 @@ class RouteNames {
   static const analysisLoading = '/analysis-loading';
   static const analysisResult = '/analysis-result';
   static const analysisPreview = '/analysis-preview';
+  static const analysisCrop = '/crop-question';
 
   static const home = '/home';
   static const history = '/history';

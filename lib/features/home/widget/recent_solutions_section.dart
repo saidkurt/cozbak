@@ -70,6 +70,29 @@ class RecentSolutionsSection extends StatelessWidget {
   }
 }
 
+String _normalizeInlineMath(String value) {
+  return value
+      .replaceAllMapped(
+        RegExp(r'\\frac\{([^}]*)\}\{([^}]*)\}'),
+        (m) => '${m.group(1)}/${m.group(2)}',
+      )
+      .replaceAllMapped(
+        RegExp(r'\\sqrt\{([^}]*)\}'),
+        (m) => '√${m.group(1)}',
+      )
+      .replaceAll(r'\cdot', '·')
+      .replaceAll(r'\pi', 'π')
+      .replaceAll(r'\tan', 'tan')
+      .replaceAll(r'\sin', 'sin')
+      .replaceAll(r'\cos', 'cos')
+      .replaceAll(r'\log', 'log')
+      .replaceAll(r'\ln', 'ln')
+      .replaceAll('{', '')
+      .replaceAll('}', '')
+      .replaceAll('\\', '')
+      .trim();
+}
+
 class _RecentSolutionCard extends StatelessWidget {
   const _RecentSolutionCard({
     required this.item,
@@ -82,6 +105,9 @@ class _RecentSolutionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badge = _statusBadge(item.status);
+    final resultText = (item.finalAnswer ?? '').trim().isEmpty
+        ? 'Çözüm hazırlanıyor...'
+        : _normalizeInlineMath(item.finalAnswer!);
 
     return Material(
       color: Colors.transparent,
@@ -122,9 +148,8 @@ class _RecentSolutionCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -147,8 +172,7 @@ class _RecentSolutionCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: badge.background,
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.full),
+                            borderRadius: BorderRadius.circular(AppRadii.full),
                           ),
                           child: Text(
                             badge.label,
@@ -160,15 +184,27 @@ class _RecentSolutionCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.recognizedQuestion.isEmpty
-                          ? 'Çözüm hazırlanıyor...'
-                          : item.recognizedQuestion,
+                    const SizedBox(height: 8),
+                    RichText(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodySm.copyWith(
-                        color: AppColors.onSurface,
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Sonuç: ',
+                            style: AppTextStyles.bodySm.copyWith(
+                              color: AppColors.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(
+                            text: resultText,
+                            style: AppTextStyles.bodySm.copyWith(
+                              color: AppColors.onSurface,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
